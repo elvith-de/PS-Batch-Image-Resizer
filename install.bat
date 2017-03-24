@@ -1,0 +1,1 @@
+start Powershell.exe -ExecutionPolicy Bypass -WindowStyle Maximized .\Install.ps1
