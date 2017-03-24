@@ -2,9 +2,11 @@
 $defaultWidthPixel = 1920
 $defaultHeightPixel = 1080
 $defaultSizePercent = 50
+$ignoreList = @("Thumbs.db","*.cr2")
 
 Add-Type -AssemblyName System.Windows.Forms
 $textBoxLog = New-Object system.windows.Forms.TextBox
+$imageMagickDir = Join-Path -Path $PSScriptRoot -ChildPath "bin\"
 
 function Show-Form {
 $FolderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -39,8 +41,8 @@ $buttonChooseSourceDir.Height = 30
 $buttonChooseSourceDir.location = new-object system.drawing.point(442,28)
 $buttonChooseSourceDir.Font = "Microsoft Sans Serif,10"
 $buttonChooseSourceDir.Add_Click({
-[void]$FolderBrowser.ShowDialog()
-$textBoxSourceDir.Text = $FolderBrowser.SelectedPath
+    [void]$FolderBrowser.ShowDialog()
+    $textBoxSourceDir.Text = $FolderBrowser.SelectedPath
 })
 $form.controls.Add($buttonChooseSourceDir)
 
@@ -69,8 +71,8 @@ $buttonChooseTargetDir.enabled = $false
 $buttonChooseTargetDir.location = new-object system.drawing.point(442,100)
 $buttonChooseTargetDir.Font = "Microsoft Sans Serif,10"
 $buttonChooseTargetDir.Add_Click({
-[void]$FolderBrowser.ShowDialog()
-$textBoxTargetDir.Text = $FolderBrowser.SelectedPath
+    [void]$FolderBrowser.ShowDialog()
+    $textBoxTargetDir.Text = $FolderBrowser.SelectedPath
 })
 $form.controls.Add($buttonChooseTargetDir)
 
@@ -182,7 +184,42 @@ $buttonGo.Width = 548
 $buttonGo.Height = 33
 $buttonGo.Add_Click({
     $buttonGo.Enabled = $false
-    Start-ImageResizeBatch
+
+    pushd
+
+    Write-Log "------------------------------------------------------------"
+    Write-Log " "
+
+    $mode = "Pixel"
+    if($radioButtonPercent.Checked)
+    {
+        $mode = "Percentage"
+    }
+    try{
+        if($textBoxSourceDir.Text -eq ""){
+            throw "Es wurde kein Quellpfad eingegeben!"
+        }
+        if(-not (Test-Path -PathType Container $textBoxSourceDir.Text)){
+            throw "Quellpfad existiert nicht!"
+        }
+        $targetDir = $textBoxTargetDir.Text
+        if($checkBoxOverwrite.Checked){
+            $targetDir = " "
+        }
+        if($targetDir -eq "" -and $checkBoxOverwrite.Checked -eq $false){
+            throw "Es wurde kein Zielpfad eingegeben!"
+        }
+        if(-not (Test-Path -PathType Container $targetDir) -and $checkBoxOverwrite.Checked -eq $false){
+            throw "Zielpfad existiert nicht!"
+        }
+        Start-ImageResizeBatch -SourceDir $textBoxSourceDir.Text -TargetDir $targetDir -Overwrite $checkBoxOverwrite.Checked -Prefix $textBoxPrefix.Text -Mode $mode -PixelWidth $textBoxWidthPixel.Text -PixelHeight $textBoxHeightPixel.Text -Percentage $textBoxPercent.Text
+    } catch {
+        Write-Log $_.Exception.Message
+        Write-Log "Es ist ein Fehler aufgetreten:"
+    }
+
+    popd
+    
     $buttonGo.Enabled = $true
 })
 $buttonGo.location = new-object system.drawing.point(11,356)
@@ -215,16 +252,67 @@ function Start-ImageResizeBatch {
     [CmdletBinding()]
 
     param(
+    [String]
+    [ValidateScript({Test-Path -PathType Container $_})]
+    [Parameter(Mandatory=$true)]
+    $SourceDir,
+    [String]
+    [ValidateScript({(Test-Path -PathType Container $_) -or ($_ -eq "") -or ($_ -eq $null)})]
+    $TargetDir,
+    [Boolean]
+    [Parameter(Mandatory=$true)]
+    $Overwrite,
+    [String]
+    $Prefix,
+    [String]
+    [ValidateSet("Pixel","Percentage")]
+    $Mode,
+    [Int]
+    $PixelWidth,
+    [Int]
+    $PixelHeight,
+    [Int]
+    $Percentage
     )
 
+    Set-Location $imageMagickDir
+    $newSize = ""
+        if($mode -eq "Pixel"){
+            if($PixelWidth -gt 0 -and $PixelHeight -gt 0){
+                $newSize = "$($PixelWidth)x$($PixelHeight)"
+            } elseif($PixelWidth -gt 0 -and $PixelHeight -le 0){
+                $newSize = "$($PixelWidth)"
+            } elseif($PixelWidth -le 0 -and $PixelHeight -gt 0){
+                $newSize = "x$($PixelHeight)"
+            } else {
+                throw "Es muss mindestens eine Größenangabe > 0 Pixel angegeben werden!"
+            }
+        } else {
+            if($Percentage -gt 0){
+                $newSize = "$($Percentage)%"
+            } else {
+                throw "Die Prozentzahl muss > 0 sein!"
+            }
+        }
+
+
     Write-Log "Start Stapelverarbeitung...."
-    Start-Sleep -Seconds 1
-    Write-Log $PSScriptRoot
-        1..50 | %{
-        Start-Sleep -Milliseconds 300
-        Write-Log "Test $_"
+    Get-ChildItem $SourceDir -Exclude $ignoreList | Where-Object {-not $_.PSIsContainer} | Foreach-Object {
+        
+        Write-Log "Verarbeite $($_.Name)"
+
+        if($Overwrite){
+            .\mogrify -resize "$newSize" "$($_.FullName)"
+        } else {
+            $newFile = Join-Path -Path $TargetDir -ChildPath "$Prefix$($_.Name)"
+            if(Test-Path $newFile -PathType Leaf){
+                Write-Log "Überspringe $($_.Name): Zieldatei $newFile existiert und wird nicht überschrieben!" 
+            } else {
+                .\convert "$($_.Fullname)" -resize "$newSize" "$newfile"
+            }
+        }
+
     }
-    Start-Sleep -Seconds 1
     Write-Log "Ende Stapelverarbeitung...."
 }
 
