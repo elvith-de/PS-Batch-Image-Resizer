@@ -3,11 +3,11 @@ $defaultWidthPixel = 1920
 $defaultHeightPixel = 1080
 $defaultSizePercent = 50
 
-
-
+Add-Type -AssemblyName System.Windows.Forms
+$textBoxLog = New-Object system.windows.Forms.TextBox
 
 function Show-Form {
-Add-Type -AssemblyName System.Windows.Forms
+$FolderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
 
 $form = New-Object system.Windows.Forms.Form
 $form.Text = "Der saubere Bildverkleinerer ;-) ($version)"
@@ -21,7 +21,7 @@ $textBoxSourceDir = New-Object system.windows.Forms.TextBox
 $textBoxSourceDir.Width = 317
 $textBoxSourceDir.Height = 20
 $textBoxSourceDir.location = new-object system.drawing.point(113,31)
-$textBoxSourceDir.Font = "Microsoft Sans Serif,13"
+$textBoxSourceDir.Font = "Microsoft Sans Serif,10"
 $form.controls.Add($textBoxSourceDir)
 
 $labelSourceDir = New-Object system.windows.Forms.Label
@@ -39,20 +39,11 @@ $buttonChooseSourceDir.Width = 85
 $buttonChooseSourceDir.Height = 30
 $buttonChooseSourceDir.location = new-object system.drawing.point(442,28)
 $buttonChooseSourceDir.Font = "Microsoft Sans Serif,10"
-$form.controls.Add($buttonChooseSourceDir)
-
-$checkBoxOverwrite = New-Object system.windows.Forms.CheckBox
-$checkBoxOverwrite.Text = "Bilder überschreiben"
-$checkBoxOverwrite.AutoSize = $true
-$checkBoxOverwrite.Width = 95
-$checkBoxOverwrite.Height = 20
-$checkBoxOverwrite.Checked = $true
-$checkBoxOverwrite.Add_CheckStateChanged({
-#add here code triggered by the event
+$buttonChooseSourceDir.Add_Click({
+[void]$FolderBrowser.ShowDialog()
+$textBoxSourceDir.Text = $FolderBrowser.SelectedPath
 })
-$checkBoxOverwrite.location = new-object system.drawing.point(10,68)
-$checkBoxOverwrite.Font = "Microsoft Sans Serif,10"
-$form.controls.Add($checkBoxOverwrite)
+$form.controls.Add($buttonChooseSourceDir)
 
 $labelTargetDir = New-Object system.windows.Forms.Label
 $labelTargetDir.Text = "Zielverzeichnis"
@@ -68,7 +59,7 @@ $textBoxTargetDir.Width = 317
 $textBoxTargetDir.Height = 20
 $textBoxTargetDir.enabled = $false
 $textBoxTargetDir.location = new-object system.drawing.point(114,100)
-$textBoxTargetDir.Font = "Microsoft Sans Serif,13"
+$textBoxTargetDir.Font = "Microsoft Sans Serif,10"
 $form.controls.Add($textBoxTargetDir)
 
 $buttonChooseTargetDir = New-Object system.windows.Forms.Button
@@ -78,6 +69,10 @@ $buttonChooseTargetDir.Height = 30
 $buttonChooseTargetDir.enabled = $false
 $buttonChooseTargetDir.location = new-object system.drawing.point(442,100)
 $buttonChooseTargetDir.Font = "Microsoft Sans Serif,10"
+$buttonChooseTargetDir.Add_Click({
+[void]$FolderBrowser.ShowDialog()
+$textBoxTargetDir.Text = $FolderBrowser.SelectedPath
+})
 $form.controls.Add($buttonChooseTargetDir)
 
 $labelPrefix = New-Object system.windows.Forms.Label
@@ -96,6 +91,21 @@ $textBoxPrefix.location = new-object system.drawing.point(230,145)
 $textBoxPrefix.Font = "Microsoft Sans Serif,10"
 $textBoxPrefix.Enabled = $false
 $form.controls.Add($textBoxPrefix)
+
+$checkBoxOverwrite = New-Object system.windows.Forms.CheckBox
+$checkBoxOverwrite.Text = "Bilder überschreiben"
+$checkBoxOverwrite.AutoSize = $true
+$checkBoxOverwrite.Width = 95
+$checkBoxOverwrite.Height = 20
+$checkBoxOverwrite.Checked = $true
+$checkBoxOverwrite.Add_CheckStateChanged({
+    $textBoxTargetDir.Enabled = -not $checkBoxOverwrite.Checked
+    $buttonChooseTargetDir.Enabled = -not $checkBoxOverwrite.Checked
+    $textBoxPrefix.Enabled =  -not $checkBoxOverwrite.Checked
+})
+$checkBoxOverwrite.location = new-object system.drawing.point(10,68)
+$checkBoxOverwrite.Font = "Microsoft Sans Serif,10"
+$form.controls.Add($checkBoxOverwrite)
 
 $radioButtonPixel = New-Object system.windows.Forms.RadioButton
 $radioButtonPixel.Text = "Pixel"
@@ -150,7 +160,7 @@ $textBoxPercent.Font = "Microsoft Sans Serif,10"
 $form.controls.Add($textBoxPercent)
 
 $label19 = New-Object system.windows.Forms.Label
-$label19.Text = "Angabe der Höhe ist optional. Die Höhe wird ggf. automatisch aus der Breite und dem Seitenverhältnis des Bildes berechnet"
+$label19.Text = "Angabe der Höhe ist optional. Die Höhe wird ggf. automatisch aus der Breite `nund dem Seitenverhältnis des Bildes berechnet"
 $label19.AutoSize = $true
 $label19.Width = 25
 $label19.Height = 10
@@ -159,7 +169,7 @@ $label19.Font = "Microsoft Sans Serif,10"
 $form.controls.Add($label19)
 
 $label20 = New-Object system.windows.Forms.Label
-$label20.Text = "Bei Angabe beider Werte wird das Bild so eingepasst, dass keine Seite die gewählte Breite/Höhe überschreitet"
+$label20.Text = "Bei Angabe beider Werte wird das Bild so eingepasst, dass keine Seite die `ngewählte Breite/Höhe überschreitet"
 $label20.AutoSize = $true
 $label20.Width = 25
 $label20.Height = 10
@@ -172,13 +182,12 @@ $buttonGo.Text = "Los!"
 $buttonGo.Width = 548
 $buttonGo.Height = 33
 $buttonGo.Add_Click({
-#add here code triggered by the event
+Start-ImageResizeBatch
 })
 $buttonGo.location = new-object system.drawing.point(11,356)
 $buttonGo.Font = "Microsoft Sans Serif,10"
 $form.controls.Add($buttonGo)
 
-$textBoxLog = New-Object system.windows.Forms.TextBox
 $textBoxLog.Multiline = $true
 $textBoxLog.Width = 552
 $textBoxLog.Height = 394
@@ -199,5 +208,21 @@ $form.controls.Add($label25)
 $form.Dispose()
 }
 
+function Start-ImageResizeBatch {
+    Write-Log "Start Stapelverarbeitung...."
+    Start-Sleep -Seconds 1
+    Write-Log "Ende Stapelverarbeitung...."
+}
+
+function Write-Log {
+    [CmdletBinding()]
+    param(
+    [String]
+    [Parameter(Mandatory=$true)]
+    $LogLine)
+
+    $textBoxLog.Text = "[$(Get-Date -UFormat %T)] $($LogLine)$([System.Environment]::NewLine)$($textBoxLog.Text)"
+
+}
 
 Show-Form
