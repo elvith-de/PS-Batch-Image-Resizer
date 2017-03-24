@@ -14,8 +14,7 @@ $form.Text = "Der saubere Bildverkleinerer ;-) ($version)"
 $form.TopMost = $true
 $form.Width = 598
 $form.Height = 852
-$Icon = [system.drawing.icon]::ExtractAssociatedIcon($PSHOME + "\powershell.exe")
-$form.Icon = $Icon
+$form.Icon = [system.drawing.icon]::ExtractAssociatedIcon($PSHOME + "\powershell.exe")
 
 $textBoxSourceDir = New-Object system.windows.Forms.TextBox
 $textBoxSourceDir.Width = 317
@@ -160,7 +159,7 @@ $textBoxPercent.Font = "Microsoft Sans Serif,10"
 $form.controls.Add($textBoxPercent)
 
 $label19 = New-Object system.windows.Forms.Label
-$label19.Text = "Angabe der Höhe ist optional. Die Höhe wird ggf. automatisch aus der Breite `nund dem Seitenverhältnis des Bildes berechnet"
+$label19.Text = "Es ist ausreichend, einen der Pixelwerte einzugeben. die Fehlende Angabe wird `nggf. automatisch aus der Breite/Höhe und dem Seitenverhältnis des Bildes berechnet"
 $label19.AutoSize = $true
 $label19.Width = 25
 $label19.Height = 10
@@ -182,7 +181,9 @@ $buttonGo.Text = "Los!"
 $buttonGo.Width = 548
 $buttonGo.Height = 33
 $buttonGo.Add_Click({
-Start-ImageResizeBatch
+    $buttonGo.Enabled = $false
+    Start-ImageResizeBatch
+    $buttonGo.Enabled = $true
 })
 $buttonGo.location = new-object system.drawing.point(11,356)
 $buttonGo.Font = "Microsoft Sans Serif,10"
@@ -193,6 +194,8 @@ $textBoxLog.Width = 552
 $textBoxLog.Height = 394
 $textBoxLog.location = new-object system.drawing.point(10,404)
 $textBoxLog.Font = "Microsoft Sans Serif,10"
+$textBoxLog.WordWrap = $true
+$textBoxLog.ScrollBars = 'Both'
 $form.controls.Add($textBoxLog)
 
 $label25 = New-Object system.windows.Forms.Label
@@ -209,7 +212,18 @@ $form.Dispose()
 }
 
 function Start-ImageResizeBatch {
+    [CmdletBinding()]
+
+    param(
+    )
+
     Write-Log "Start Stapelverarbeitung...."
+    Start-Sleep -Seconds 1
+    Write-Log $PSScriptRoot
+        1..50 | %{
+        Start-Sleep -Milliseconds 300
+        Write-Log "Test $_"
+    }
     Start-Sleep -Seconds 1
     Write-Log "Ende Stapelverarbeitung...."
 }
