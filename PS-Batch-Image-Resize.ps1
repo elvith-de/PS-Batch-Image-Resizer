@@ -2,7 +2,7 @@
 $defaultWidthPixel = 1920
 $defaultHeightPixel = 1080
 $defaultSizePercent = 50
-$ignoreList = @("Thumbs.db","*.cr2","*.dng")
+$ignoreList = @("Thumbs.db","*.CR2","*.dng")
 
 Add-Type -AssemblyName System.Windows.Forms
 $textBoxLog = New-Object system.windows.Forms.TextBox
